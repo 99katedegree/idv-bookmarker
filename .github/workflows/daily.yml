@@ -1,0 +1,30 @@
+name: daily
+
+on:
+  schedule:
+    - cron: "0 15 * * *" # UTC 15:00 = JST 0:00
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm start
+        env:
+          X_CLIENT_ID: ${{ secrets.X_CLIENT_ID }}
+          X_CLIENT_SECRET: ${{ secrets.X_CLIENT_SECRET }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      # 60日間動きがなくても自動停止しないよう、API経由でワークフローを再有効化（空コミットは作らない）
+      - uses: gautamkrishnar/keepalive-workflow@v2
+        if: always()
