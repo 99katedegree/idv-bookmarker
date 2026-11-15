@@ -1,4 +1,4 @@
-import { fetchJson } from "./http.js";
+import { fetchJson, fetchWithRetry } from "./http.js";
 
 const API = "https://api.x.com/2";
 
@@ -57,22 +57,14 @@ export class XClient {
     return (await this.get<{ data: { id: string } }>("/users/me")).data.id;
   }
 
-  /** ブックマークが空になるまで「一覧取得→削除」を繰り返す。削除件数を返す */
-  async deleteAllBookmarks(userId: string): Promise<number> {
-    let deleted = 0;
-    for (;;) {
-      const page = await this.get<Page<Tweet>>(`/users/${userId}/bookmarks`, {
-        max_results: "100",
-      });
-      const tweets = page.data ?? [];
-      if (tweets.length === 0) return deleted;
-      for (const t of tweets) {
-        await fetchJson(`${API}/users/${userId}/bookmarks/${t.id}`, {
-          method: "DELETE",
-          headers: this.headers(),
-        });
-        deleted++;
-      }
+  /** ブックマークを1件削除する。すでに無い（404）場合も成功扱い */
+  async deleteBookmark(userId: string, tweetId: string): Promise<void> {
+    const res = await fetchWithRetry(`${API}/users/${userId}/bookmarks/${tweetId}`, {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`DELETE bookmark ${tweetId} -> ${res.status} ${await res.text()}`);
     }
   }
 
@@ -113,9 +105,12 @@ export class XClient {
     return { tweets, newestId };
   }
 
-  /** start/end の範囲で特定ツイートを検索（リポスト除く） */
-  async searchTweets(start: Date, end: Date): Promise<Tweet[]> {
-    const query = `(${HASHTAGS.map((h) => "#" + h).join(" OR ")}) -is:retweet`;
+  /**
+   * start/end の範囲で特定ツイートを検索（リポスト除く）。
+   * excludeUserIds は検索クエリの文字数上限に収まる範囲で `-from:` として入れ、読み取り自体を減らす。
+   */
+  async searchTweets(start: Date, end: Date, excludeUserIds: string[] = []): Promise<Tweet[]> {
+    const query = buildSearchQuery(excludeUserIds);
     const out: Tweet[] = [];
     let token: string | undefined;
     do {
@@ -133,6 +128,18 @@ export class XClient {
     } while (token);
     return out;
   }
+}
+
+const MAX_QUERY_LENGTH = 480; // recent search の上限 512 に余裕を持たせる
+
+export function buildSearchQuery(excludeUserIds: string[]): string {
+  let query = `(${HASHTAGS.map((h) => "#" + h).join(" OR ")}) -is:retweet`;
+  for (const id of excludeUserIds) {
+    const clause = ` -from:${id}`;
+    if (query.length + clause.length > MAX_QUERY_LENGTH) break;
+    query += clause;
+  }
+  return query;
 }
 
 function hasTargetHashtag(t: Tweet): boolean {

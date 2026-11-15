@@ -10,6 +10,11 @@ Table liked_authors {
   added_at text
 }
 
+Table bookmarked_tweets {
+  tweet_id      text [pk, note: "このツールがブックマークしたツイートID（翌日の削除対象）"]
+  bookmarked_at text
+}
+
 Table runs {
   run_at         text    [note: "実行日時（JST）"]
   deleted        integer [note: "削除したブックマーク数"]

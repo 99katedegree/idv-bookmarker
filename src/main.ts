@@ -51,8 +51,13 @@ async function main() {
     const me = await x.me();
     stats.cost += COST_USER_READ;
 
-    // 1: 全ブックマーク削除
-    stats.deleted = await x.deleteAllBookmarks(me);
+    // 1: このツールが保存したブックマークを削除（一覧取得は行わず、DBに記録したIDで削除）
+    const prev = await withRetry(() => db.execute("SELECT tweet_id FROM bookmarked_tweets"));
+    for (const r of prev.rows) {
+      await x.deleteBookmark(me, String(r.tweet_id));
+      stats.deleted++;
+    }
+    await withRetry(() => db.execute("DELETE FROM bookmarked_tweets"));
 
     // 2: いいねした特定ツイートの投稿者を除外リストへ
     const lastLikeId = await getState(db, "last_like_id");
@@ -73,13 +78,16 @@ async function main() {
     }
     if (newestId) await setState(db, "last_like_id", newestId);
 
-    const rows = await withRetry(() => db.execute("SELECT user_id FROM liked_authors"));
+    const rows = await withRetry(() =>
+      db.execute("SELECT user_id FROM liked_authors ORDER BY added_at DESC, rowid DESC"),
+    );
     const excludeSet = new Set(rows.rows.map((r) => String(r.user_id)));
     stats.excludedTotal = excludeSet.size;
 
     // 3: 昨日1日分を検索し、除外リストと自分の投稿を除く
     const { start, end } = yesterdayRangeJst();
-    const found = await x.searchTweets(start, end);
+    // 除外リスト（新しい順）を検索クエリ側でも除く。入りきらない分と自分の投稿は下で取り除く
+    const found = await x.searchTweets(start, end, [...excludeSet]);
     stats.searched = found.length;
     stats.cost += found.length * COST_POST_READ;
     const targets = found.filter(
@@ -91,6 +99,19 @@ async function main() {
     stats.excluded = found.length - targets.length;
 
     // 4: ブックマーク保存
+    // 先にDBへ記録してから追加する（途中で失敗しても、翌日404扱いで安全に削除できる）
+    const bookmarkedAt = jstNow();
+    if (targets.length) {
+      await withRetry(() =>
+        db.batch(
+          targets.map((t) => ({
+            sql: "INSERT OR IGNORE INTO bookmarked_tweets (tweet_id, bookmarked_at) VALUES (?, ?)",
+            args: [t.id, bookmarkedAt],
+          })),
+          "write",
+        ),
+      );
+    }
     for (const t of targets) {
       await x.addBookmark(me, t.id);
       stats.bookmarked++;
