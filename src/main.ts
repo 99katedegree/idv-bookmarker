@@ -32,7 +32,7 @@ async function main() {
   const db = createDb();
   await ensureSchema(db);
 
-  const stats = { deleted: 0, excludedTotal: 0, searched: 0, excluded: 0, bookmarked: 0, cost: 0 };
+  const stats = { deleted: 0, excludedTotal: 0, searched: 0, excluded: 0, bookmarked: 0, blocked: 0, cost: 0 };
   let error: string | null = null;
 
   try {
@@ -112,19 +112,25 @@ async function main() {
         ),
       );
     }
+    const blockedBy = new Set<string>();
     for (const t of targets) {
-      if (await x.addBookmark(me, t.id)) {
+      const result = await x.addBookmark(me, t.id);
+      if (result === "ok") {
         stats.bookmarked++;
         stats.cost += COST_BOOKMARK_WRITE;
-      } else {
-        // ブロックされている・削除済みなど。記録から外して、除外件数に含める
-        stats.excluded++;
-        await withRetry(() =>
-          db.execute({ sql: "DELETE FROM bookmarked_tweets WHERE tweet_id = ?", args: [t.id] }),
-        );
-        console.warn(`スキップ: ${t.id}`);
+        continue;
       }
+      // ブロックされている・削除済みの投稿はブックマークせず、記録から外す
+      if (result === "blocked") {
+        if (t.author_id) blockedBy.add(t.author_id);
+      } else {
+        stats.excluded++;
+      }
+      await withRetry(() =>
+        db.execute({ sql: "DELETE FROM bookmarked_tweets WHERE tweet_id = ?", args: [t.id] }),
+      );
     }
+    stats.blocked = blockedBy.size;
   } catch (e) {
     error = e instanceof Error ? (e.stack ?? e.message) : String(e);
     console.error(error);
@@ -134,8 +140,8 @@ async function main() {
   try {
     await withRetry(() =>
       db.execute({
-        sql: `INSERT INTO runs (run_at, deleted, excluded_total, searched, excluded, bookmarked, est_cost_usd, error)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO runs (run_at, deleted, excluded_total, searched, excluded, bookmarked, blocked, est_cost_usd, error)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           jstNow(),
           stats.deleted,

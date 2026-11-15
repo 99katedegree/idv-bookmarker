@@ -32,12 +32,18 @@ export async function ensureSchema(db: Client): Promise<void> {
         "CREATE TABLE IF NOT EXISTS bookmarked_tweets (tweet_id TEXT PRIMARY KEY, bookmarked_at TEXT)",
         `CREATE TABLE IF NOT EXISTS runs (
           run_at TEXT, deleted INTEGER, excluded_total INTEGER, searched INTEGER,
-          excluded INTEGER, bookmarked INTEGER, est_cost_usd REAL, error TEXT
+          excluded INTEGER, bookmarked INTEGER, blocked INTEGER, est_cost_usd REAL, error TEXT
         )`,
       ],
       "write",
     ),
   );
+  // 既存DBに blocked 列がなければ追加する
+  try {
+    await db.execute("ALTER TABLE runs ADD COLUMN blocked INTEGER");
+  } catch {
+    // すでに存在する
+  }
 }
 
 export async function getState(db: Client, key: string): Promise<string | null> {

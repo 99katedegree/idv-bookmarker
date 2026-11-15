@@ -10,7 +10,9 @@ export async function fetchWithRetry(url: string, init?: RequestInit): Promise<R
       const res = await fetch(url, init);
       if (res.status === 429) {
         const waitMs = rateLimitWaitMs(res);
-        console.warn(`429: ${Math.ceil(waitMs / 1000)}秒待機 (${attempt}/${MAX_ATTEMPTS})`);
+        console.warn(
+          `429: ${Math.ceil(waitMs / 1000)}秒待機 (${attempt}/${MAX_ATTEMPTS}) ${init?.method ?? "GET"} ${url}`,
+        );
         lastError = new Error(`429 Too Many Requests: ${url}`);
         await sleep(waitMs);
         continue;

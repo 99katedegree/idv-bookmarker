@@ -22,6 +22,7 @@ Table runs {
   searched       integer [note: "検索で取得した件数"]
   excluded       integer [note: "除外した件数"]
   bookmarked     integer [note: "ブックマークした件数"]
+  blocked        integer [note: "ブロックされていてブックマークできなかった投稿者の人数"]
   est_cost_usd   real    [note: "推定料金"]
   error          text    [note: "エラー内容（なければ NULL）"]
 }
