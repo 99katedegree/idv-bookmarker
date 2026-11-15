@@ -13,7 +13,7 @@
     "@libsql/client": "^0.14.0"
   },
   "devDependencies": {
-    "@types/node": "^20.14.0",
+    "@types/node": "^24.19.2",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0"
   }
