@@ -100,12 +100,9 @@ export class XClient {
     return { tweets, seenIds };
   }
 
-  /**
-   * start/end の範囲で特定ツイートを検索（リポスト除く）。
-   * excludeUserIds は検索クエリの文字数上限に収まる範囲で `-from:` として入れ、読み取り自体を減らす。
-   */
-  async searchTweets(start: Date, end: Date, excludeUserIds: string[] = []): Promise<Tweet[]> {
-    const query = buildSearchQuery(excludeUserIds);
+  /** start/end の範囲で特定ツイートを検索（リポスト除く） */
+  async searchTweets(start: Date, end: Date): Promise<Tweet[]> {
+    const query = buildSearchQuery();
     const out: Tweet[] = [];
     let token: string | undefined;
     do {
@@ -128,16 +125,8 @@ export class XClient {
 /** 次回の打ち切り判定に使う、直近のいいねIDの保持数 */
 export const LIKE_CURSOR_SIZE = 10;
 
-const MAX_QUERY_LENGTH = 480; // recent search の上限 512 に余裕を持たせる
-
-export function buildSearchQuery(excludeUserIds: string[]): string {
-  let query = `(${HASHTAGS.map((h) => "#" + h).join(" OR ")}) -is:retweet`;
-  for (const id of excludeUserIds) {
-    const clause = ` -from:${id}`;
-    if (query.length + clause.length > MAX_QUERY_LENGTH) break;
-    query += clause;
-  }
-  return query;
+function buildSearchQuery(): string {
+  return `(${HASHTAGS.map((h) => "#" + h).join(" OR ")}) -is:retweet`;
 }
 
 function hasTargetHashtag(t: Tweet): boolean {

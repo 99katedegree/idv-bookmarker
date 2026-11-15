@@ -74,16 +74,13 @@ async function main() {
       await setState(db, "last_like_id", next.join(","));
     }
 
-    const rows = await withRetry(() =>
-      db.execute("SELECT user_id FROM liked_authors ORDER BY added_at DESC, rowid DESC"),
-    );
+    const rows = await withRetry(() => db.execute("SELECT user_id FROM liked_authors"));
     const excludeSet = new Set(rows.rows.map((r) => String(r.user_id)));
     stats.excludedTotal = excludeSet.size;
 
     // 3: 昨日1日分を検索し、除外リストと自分の投稿を除く
     const { start, end } = yesterdayRangeJst();
-    // 除外リスト（新しい順）を検索クエリ側でも除く。入りきらない分と自分の投稿は下で取り除く
-    const found = await x.searchTweets(start, end, [...excludeSet]);
+    const found = await x.searchTweets(start, end);
     stats.searched = found.length;
     stats.cost += found.length * COST_POST_READ;
     const targets = found.filter(
