@@ -71,15 +71,16 @@ export class XClient {
   }
 
   /**
-   * 新しい順にいいねを取得し、lastLikeId に到達したら打ち切る。
-   * 返す tweets は特定ハッシュタグを含むもののみ。newestId は今回見た最新のいいねID。
+   * いいねした順（新しい順）に取得し、前回の最新いいね（knownIds）のどれかに当たったら打ち切る。
+   * いいね一覧はツイートIDの順ではないので、IDの大小ではなく一致で判定する。
+   * 返す tweets は特定ハッシュタグを含むもののみ。seenIds は今回見たいいねID（新しい順）。
    */
   async fetchNewLikedTweets(
     userId: string,
-    lastLikeId: string | null,
-  ): Promise<{ tweets: Tweet[]; newestId: string | null }> {
+    knownIds: Set<string>,
+  ): Promise<{ tweets: Tweet[]; seenIds: string[] }> {
     const tweets: Tweet[] = [];
-    let newestId: string | null = null;
+    const seenIds: string[] = [];
     let token: string | undefined;
     outer: for (;;) {
       const params: Record<string, string> = {
@@ -89,14 +90,14 @@ export class XClient {
       if (token) params.pagination_token = token;
       const page = await this.get<Page<Tweet>>(`/users/${userId}/liked_tweets`, params);
       for (const t of page.data ?? []) {
-        if (lastLikeId && BigInt(t.id) <= BigInt(lastLikeId)) break outer;
-        newestId ??= t.id;
+        if (knownIds.has(t.id)) break outer;
+        if (seenIds.length < LIKE_CURSOR_SIZE) seenIds.push(t.id);
         if (hasTargetHashtag(t)) tweets.push(t);
       }
       token = page.meta?.next_token;
       if (!token) break;
     }
-    return { tweets, newestId };
+    return { tweets, seenIds };
   }
 
   /**
@@ -123,6 +124,9 @@ export class XClient {
     return out;
   }
 }
+
+/** 次回の打ち切り判定に使う、直近のいいねIDの保持数 */
+export const LIKE_CURSOR_SIZE = 10;
 
 const MAX_QUERY_LENGTH = 480; // recent search の上限 512 に余裕を持たせる
 

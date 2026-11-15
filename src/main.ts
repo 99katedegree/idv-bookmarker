@@ -1,5 +1,5 @@
 import { createDb, ensureSchema, getState, setState, withRetry } from "./db.js";
-import { refreshAccessToken, XClient } from "./x.js";
+import { LIKE_CURSOR_SIZE, refreshAccessToken, XClient } from "./x.js";
 
 // 推定料金（USD/件）。X API の従量課金単価に合わせて調整すること。
 const COST_POST_READ = 0.005;
@@ -52,8 +52,9 @@ async function main() {
     stats.cost += COST_USER_READ;
 
     // 2: いいねした特定ツイートの投稿者を除外リストへ
-    const lastLikeId = await getState(db, "last_like_id");
-    const { tweets: liked, newestId } = await x.fetchNewLikedTweets(me, lastLikeId);
+    // last_like_id には、前回までの最新いいねIDをカンマ区切りで最大10件保存する
+    const prevLikeIds = (await getState(db, "last_like_id"))?.split(",").filter(Boolean) ?? [];
+    const { tweets: liked, seenIds } = await x.fetchNewLikedTweets(me, new Set(prevLikeIds));
     stats.cost += liked.length * COST_POST_READ; // 近似（取得全件ではなく対象のみ）
     const addedAt = jstNow();
     const authors = [...new Set(liked.map((t) => t.author_id).filter((a): a is string => !!a))];
@@ -68,7 +69,10 @@ async function main() {
         ),
       );
     }
-    if (newestId) await setState(db, "last_like_id", newestId);
+    if (seenIds.length) {
+      const next = [...new Set([...seenIds, ...prevLikeIds])].slice(0, LIKE_CURSOR_SIZE);
+      await setState(db, "last_like_id", next.join(","));
+    }
 
     const rows = await withRetry(() =>
       db.execute("SELECT user_id FROM liked_authors ORDER BY added_at DESC, rowid DESC"),

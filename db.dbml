@@ -1,7 +1,7 @@
 // dbdiagram.io 形式。テーブル構成を変えたら必ずこのファイルも更新すること。
 
 Table state {
-  key   text [pk, note: "'refresh_token' | 'last_like_id'"]
+  key   text [pk, note: "'refresh_token' | 'last_like_id'（直近のいいねIDをカンマ区切りで最大10件）"]
   value text
 }
 
