@@ -68,12 +68,16 @@ export class XClient {
     }
   }
 
-  async addBookmark(userId: string, tweetId: string): Promise<void> {
-    await fetchJson(`${API}/users/${userId}/bookmarks`, {
+  /** ブックマークを追加する。ブロックされている(403)・削除済み(404)の投稿は false を返して飛ばす */
+  async addBookmark(userId: string, tweetId: string): Promise<boolean> {
+    const res = await fetchWithRetry(`${API}/users/${userId}/bookmarks`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({ tweet_id: tweetId }),
     });
+    if (res.ok) return true;
+    if (res.status === 403 || res.status === 404) return false;
+    throw new Error(`POST bookmark ${tweetId} -> ${res.status} ${await res.text()}`);
   }
 
   /**

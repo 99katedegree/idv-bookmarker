@@ -113,9 +113,17 @@ async function main() {
       );
     }
     for (const t of targets) {
-      await x.addBookmark(me, t.id);
-      stats.bookmarked++;
-      stats.cost += COST_BOOKMARK_WRITE;
+      if (await x.addBookmark(me, t.id)) {
+        stats.bookmarked++;
+        stats.cost += COST_BOOKMARK_WRITE;
+      } else {
+        // ブロックされている・削除済みなど。記録から外して、除外件数に含める
+        stats.excluded++;
+        await withRetry(() =>
+          db.execute({ sql: "DELETE FROM bookmarked_tweets WHERE tweet_id = ?", args: [t.id] }),
+        );
+        console.warn(`スキップ: ${t.id}`);
+      }
     }
   } catch (e) {
     error = e instanceof Error ? (e.stack ?? e.message) : String(e);
