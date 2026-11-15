@@ -32,7 +32,7 @@ async function main() {
   const db = createDb();
   await ensureSchema(db);
 
-  const stats = { deleted: 0, excludedTotal: 0, searched: 0, excluded: 0, bookmarked: 0, blocked: 0, cost: 0 };
+  const stats = { excludedTotal: 0, searched: 0, excluded: 0, bookmarked: 0, blocked: 0, cost: 0 };
   let error: string | null = null;
 
   try {
@@ -50,14 +50,6 @@ async function main() {
     const x = new XClient(tokens.access_token);
     const me = await x.me();
     stats.cost += COST_USER_READ;
-
-    // 1: このツールが保存したブックマークを削除（一覧取得は行わず、DBに記録したIDで削除）
-    const prev = await withRetry(() => db.execute("SELECT tweet_id FROM bookmarked_tweets"));
-    for (const r of prev.rows) {
-      await x.deleteBookmark(me, String(r.tweet_id));
-      stats.deleted++;
-    }
-    await withRetry(() => db.execute("DELETE FROM bookmarked_tweets"));
 
     // 2: いいねした特定ツイートの投稿者を除外リストへ
     const lastLikeId = await getState(db, "last_like_id");
@@ -98,20 +90,7 @@ async function main() {
     );
     stats.excluded = found.length - targets.length;
 
-    // 4: ブックマーク保存
-    // 先にDBへ記録してから追加する（途中で失敗しても、翌日404扱いで安全に削除できる）
-    const bookmarkedAt = jstNow();
-    if (targets.length) {
-      await withRetry(() =>
-        db.batch(
-          targets.map((t) => ({
-            sql: "INSERT OR IGNORE INTO bookmarked_tweets (tweet_id, bookmarked_at) VALUES (?, ?)",
-            args: [t.id, bookmarkedAt],
-          })),
-          "write",
-        ),
-      );
-    }
+    // 4: ブックマーク保存（すでにブックマーク済みなら何も起きない）
     const blockedBy = new Set<string>();
     for (const t of targets) {
       const result = await x.addBookmark(me, t.id);
@@ -120,15 +99,12 @@ async function main() {
         stats.cost += COST_BOOKMARK_WRITE;
         continue;
       }
-      // ブロックされている・削除済みの投稿はブックマークせず、記録から外す
+      // ブロックされている・削除済みの投稿はブックマークしない
       if (result === "blocked") {
         if (t.author_id) blockedBy.add(t.author_id);
       } else {
         stats.excluded++;
       }
-      await withRetry(() =>
-        db.execute({ sql: "DELETE FROM bookmarked_tweets WHERE tweet_id = ?", args: [t.id] }),
-      );
     }
     stats.blocked = blockedBy.size;
   } catch (e) {
@@ -140,15 +116,15 @@ async function main() {
   try {
     await withRetry(() =>
       db.execute({
-        sql: `INSERT INTO runs (run_at, deleted, excluded_total, searched, excluded, bookmarked, blocked, est_cost_usd, error)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO runs (run_at, excluded_total, searched, excluded, bookmarked, blocked, est_cost_usd, error)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           jstNow(),
-          stats.deleted,
           stats.excludedTotal,
           stats.searched,
           stats.excluded,
           stats.bookmarked,
+          stats.blocked,
           stats.cost,
           error,
         ],

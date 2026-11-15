@@ -57,17 +57,6 @@ export class XClient {
     return (await this.get<{ data: { id: string } }>("/users/me")).data.id;
   }
 
-  /** ブックマークを1件削除する。すでに無い（404）場合も成功扱い */
-  async deleteBookmark(userId: string, tweetId: string): Promise<void> {
-    const res = await fetchWithRetry(`${API}/users/${userId}/bookmarks/${tweetId}`, {
-      method: "DELETE",
-      headers: this.headers(),
-    });
-    if (!res.ok && res.status !== 404) {
-      throw new Error(`DELETE bookmark ${tweetId} -> ${res.status} ${await res.text()}`);
-    }
-  }
-
   /** ブックマークを追加する。blocked=投稿者にブロックされている(403)、gone=削除済み(404) */
   async addBookmark(userId: string, tweetId: string): Promise<"ok" | "blocked" | "gone"> {
     const res = await fetchWithRetry(`${API}/users/${userId}/bookmarks`, {

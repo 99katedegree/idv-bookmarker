@@ -29,9 +29,8 @@ export async function ensureSchema(db: Client): Promise<void> {
       [
         "CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT)",
         "CREATE TABLE IF NOT EXISTS liked_authors (user_id TEXT PRIMARY KEY, added_at TEXT)",
-        "CREATE TABLE IF NOT EXISTS bookmarked_tweets (tweet_id TEXT PRIMARY KEY, bookmarked_at TEXT)",
         `CREATE TABLE IF NOT EXISTS runs (
-          run_at TEXT, deleted INTEGER, excluded_total INTEGER, searched INTEGER,
+          run_at TEXT, excluded_total INTEGER, searched INTEGER,
           excluded INTEGER, bookmarked INTEGER, blocked INTEGER, est_cost_usd REAL, error TEXT
         )`,
       ],
