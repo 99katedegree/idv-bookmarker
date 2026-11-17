@@ -2,7 +2,7 @@ name: daily
 
 on:
   schedule:
-    - cron: "0 15 * * *" # UTC 15:00 = JST 0:00
+    - cron: "17 16 * * *" # UTC 16:17 = JST 1:17
   workflow_dispatch:
 
 permissions:
