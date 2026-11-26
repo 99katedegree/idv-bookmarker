@@ -2,9 +2,9 @@ name = "workers-idv-bookmarker"
 main = "index.js"
 compatibility_date = "2026-11-01"
 
-# UTC 17:17 = JST 2:17
+# UTC 13:17 = JST 22:17（1日の区切り 22:00 の直後）
 [triggers]
-crons = ["17 17 * * *"]
+crons = ["17 13 * * *"]
 
 [vars]
 GITHUB_REPOSITORY = "99katedegree/idv-bookmarker"

@@ -1,4 +1,5 @@
 import { createDb, ensureSchema, getState, setState, withRetry } from "./db.js";
+import { latestDayRange } from "./window.js";
 import { LIKE_CURSOR_SIZE, refreshAccessToken, XClient } from "./x.js";
 
 // 推定料金（USD/件）。X API の従量課金単価に合わせて調整すること。
@@ -10,16 +11,6 @@ const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 function jstNow(): string {
   return new Date(Date.now() + JST_OFFSET_MS).toISOString().replace("Z", "+09:00");
-}
-
-/** 昨日1日分（JST 0:00〜24:00）を UTC の Date で返す。時刻で固定なので実行遅延の影響を受けない */
-function yesterdayRangeJst(now = new Date()): { start: Date; end: Date } {
-  const jst = new Date(now.getTime() + JST_OFFSET_MS);
-  const todayJst0 = Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate());
-  return {
-    start: new Date(todayJst0 - 24 * 3600 * 1000 - JST_OFFSET_MS),
-    end: new Date(todayJst0 - JST_OFFSET_MS),
-  };
 }
 
 function env(name: string): string {
@@ -79,7 +70,7 @@ async function main() {
     stats.excludedTotal = excludeSet.size;
 
     // 3: 昨日1日分を検索し、除外リストと自分の投稿を除く
-    const { start, end } = yesterdayRangeJst();
+    const { start, end } = latestDayRange();
     const found = await x.searchTweets(start, end);
     stats.searched = found.length;
     stats.cost += found.length * COST_POST_READ;
