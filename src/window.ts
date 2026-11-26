@@ -1,8 +1,8 @@
 const HOUR_MS = 60 * 60 * 1000;
 const JST_OFFSET_MS = 9 * HOUR_MS;
 
-/** 「1日」の始まり（JST の時）。22 なら、22:00〜翌22:00 を1日とみなす */
-export const DAY_START_HOUR_JST = 22;
+/** 「1日」の始まり（JST の時）。21 なら、21:00〜翌21:00 を1日とみなす */
+export const DAY_START_HOUR_JST = 21;
 
 /**
  * 直近に終わった「1日」の範囲を返す。
