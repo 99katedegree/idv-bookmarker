@@ -1,0 +1,13 @@
+name = "idv-bookmarker-dispatcher"
+main = "index.js"
+compatibility_date = "2026-11-01"
+
+# UTC 17:17 = JST 2:17
+[triggers]
+crons = ["17 17 * * *"]
+
+[vars]
+GITHUB_REPOSITORY = "99katedegree/idv-bookmarker"
+WORKFLOW_FILE = "daily.yml"
+
+# GITHUB_TOKEN は Secret として登録する（wrangler secret put GITHUB_TOKEN）
