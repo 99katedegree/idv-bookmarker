@@ -6,9 +6,9 @@ compatibility_date = "2026-11-01"
 workers_dev = false
 preview_urls = false
 
-# UTC 12:17 = JST 21:17（1日の区切り 21:00 の直後）
+# UTC 12:40 = JST 21:40（1日の区切りは 21:00。src/window.ts の DAY_START_HOUR_JST）
 [triggers]
-crons = ["17 12 * * *"]
+crons = ["40 12 * * *"]
 
 [vars]
 GITHUB_REPOSITORY = "99katedegree/idv-bookmarker"
