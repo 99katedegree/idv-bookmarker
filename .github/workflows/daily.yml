@@ -1,8 +1,6 @@
 name: daily
 
 on:
-  schedule:
-    - cron: "17 17 * * *" # UTC 17:17 = JST 2:17
   workflow_dispatch:
 
 permissions:
