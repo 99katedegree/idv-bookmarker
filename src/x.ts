@@ -57,7 +57,7 @@ export class XClient {
     return (await this.get<{ data: { id: string } }>("/users/me")).data.id;
   }
 
-  /** ブックマークを追加する。blocked=投稿者にブロックされている(403)、gone=削除済み(404) */
+  /** ブックマークを追加する。blocked=投稿者にブロックされている(403)、gone=削除済み・存在しない(404/400) */
   async addBookmark(userId: string, tweetId: string): Promise<"ok" | "blocked" | "gone"> {
     const res = await fetchWithRetry(`${API}/users/${userId}/bookmarks`, {
       method: "POST",
@@ -66,7 +66,8 @@ export class XClient {
     });
     if (res.ok) return "ok";
     if (res.status === 403) return "blocked";
-    if (res.status === 404) return "gone";
+    // 404 または 400（"Tweet that does not exist" など、その投稿だけの問題）は飛ばす
+    if (res.status === 404 || res.status === 400) return "gone";
     throw new Error(`POST bookmark ${tweetId} -> ${res.status} ${await res.text()}`);
   }
 
