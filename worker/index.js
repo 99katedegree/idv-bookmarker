@@ -8,7 +8,7 @@ export default {
         Authorization: `Bearer ${env.GITHUB_TOKEN}`,
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "idv-bookmarker-dispatcher",
+        "User-Agent": "workers-idv-bookmarker",
       },
       body: JSON.stringify({ ref: "main" }),
     });

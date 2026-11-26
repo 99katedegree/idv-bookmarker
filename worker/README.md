@@ -1,4 +1,4 @@
-# dispatcher
+# workers-idv-bookmarker
 
 Cloudflare Workers の Cron Trigger から、GitHub Actions の `daily.yml` を `workflow_dispatch` で起動する Worker。
 

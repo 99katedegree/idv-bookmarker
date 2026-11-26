@@ -1,4 +1,4 @@
-name = "idv-bookmarker-dispatcher"
+name = "workers-idv-bookmarker"
 main = "index.js"
 compatibility_date = "2026-11-01"
 
