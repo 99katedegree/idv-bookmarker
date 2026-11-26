@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
+  contents: read
 
 jobs:
   run:
@@ -23,11 +23,3 @@ jobs:
           X_CLIENT_SECRET: ${{ secrets.X_CLIENT_SECRET }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-      # 60日間動きがなくても自動停止しないよう、API経由でワークフローを再有効化する（空コミットは作らない）。
-      # gautamkrishnar/keepalive-workflow は GitHub にブロックされているため、同じ方式を自前で行う。
-      - name: keepalive
-        if: always()
-        run: gh workflow enable daily.yml
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
